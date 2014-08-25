@@ -10,14 +10,22 @@
     <properties>
         <java.version>1.6</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <server.keystore.keystore>src/main/non-packaged-resources/keyStore/server-keystore.jks</server.keystore.keystore>
+        <server.keystore.pass>secret</server.keystore.pass>
+        <server.truststore.truststore>src/main/non-packaged-resources/trustStore/server-truststore.jks</server.truststore.truststore>
+        <server.truststore.pass>secret</server.truststore.pass>
     </properties>
 
     <dependencies>
-        <!-- Jetty -->
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
-            <version>7.4.5.v20110725</version>
+            <version>9.2.2.v20140723</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe</groupId>
+            <artifactId>config</artifactId>
+            <version>1.0.2</version>
         </dependency>
     </dependencies>
 
@@ -32,21 +40,27 @@
                     <target>${java.version}</target>
                 </configuration>
             </plugin>
-		      <plugin>
-		        <groupId>org.apache.maven.plugins</groupId>
-		        <artifactId>maven-jar-plugin</artifactId>
-		        <version>2.3.1</version>
-		        <configuration>
-		          <archive>
-		            <manifest>
-		              <addClasspath>true</addClasspath>
-        		      <classpathPrefix>${settings.localRepository}</classpathPrefix>
-		              <classpathLayoutType>repository</classpathLayoutType>
-		              <mainClass>org.perdue.fileserver.Main</mainClass>
-		            </manifest>
-		          </archive>
-		        </configuration>
-		      </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.3.1</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>${settings.localRepository}</classpathPrefix>
+                            <classpathLayoutType>repository</classpathLayoutType>
+                            <mainClass>org.perdue.fileserver.HttpsFileServer</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources-filtered</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
     </build>
 </project>

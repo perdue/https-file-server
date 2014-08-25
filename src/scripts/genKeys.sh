@@ -1,0 +1,117 @@
+#!/bin/bash
+###############################
+#  SSL Key Generation Script  #
+#  Bryan Saunders             #
+#  bsaunder@redhat.com        #
+###############################
+
+# https://github.com/bsaunder/ShellScripts/tree/master/SSL_Gen_Keys
+
+echo "SSL Generation Script"
+
+echo "Checking for OpenSSL and Keytool"
+CMDS="openssl keytool"
+for c in $CMDS
+do
+	type -P $c &>/dev/null  && continue  || { echo "$c command not found."; exit 1; }
+done
+echo "OpenSSL and Keytool found"
+
+echo "Reading ssl.properties..."
+. ./ssl.properties
+echo "Properties Set."
+
+echo "What password should be used with certificates/keystores (min 6 chars)?"
+#read password
+password=secret
+echo "Please Enter $password ANYTIME You are prompted for a password"
+
+echo "Generating Self-Signed Server Certificate"
+
+echo "Preparing..."
+rm -rvf server
+rm -rvf clients
+
+# Generate Server Certiicate
+echo "Generating Server Certificates..."
+
+echo "Generating RSA Key..."
+openssl genrsa -out server-private-key.pem 2048
+
+echo "Signing Certificate, Server: /C=$country/ST=$state/L=$city/O=$org/OU=$orgUnit/CN=$server"
+openssl req -new -x509 -key server-private-key.pem -out server-certificate.pem -days 36500 -subj "/C=$country/ST=$state/L=$city/O=$org/OU=$orgUnit/CN=$server"
+
+echo "Generating PKCS12 Keystore..."
+openssl pkcs12 -export -out server-keystore.pkcs12 -in server-certificate.pem -inkey server-private-key.pem -passout pass:$password
+
+echo "Generating JKS Keystore..."
+keytool -importkeystore -srckeystore server-keystore.pkcs12 -srcstoretype PKCS12 -destkeystore server-keystore.jks -deststoretype JKS -storepass $password -keypass $password << EOF
+$password
+EOF
+
+# Generate Client Certiicates
+if [ $clientCount -gt 0 ]; then
+	echo "Generating Client Certificates..."
+	mkdir clients
+
+	i="1"
+	while [ $i -le $clientCount ]; do
+		echo "Generating Client $i Certificates..."
+		clientPath=clients/client_$i/
+
+		echo "Generating RSA Key"
+		openssl genrsa -out client_$i-private-key.pem 2048
+
+		clientHostname=client_$i
+		echo "Signing Certificate, Client: /C=$country/ST=$state/L=$city/O=$org/OU=$orgUnit/CN=${!clientHostname}"
+		openssl req -new -x509 -key client_$i-private-key.pem -out client_$i-certificate.pem -days 36500 -subj "/C=$country/ST=$state/L=$city/O=$org/OU=$orgUnit/CN=${!clientHostname}"
+
+		echo "Generating Client Trust Store..."
+		keytool -importcert -trustcacerts -keystore  client_$i-truststore.jks -storetype jks -storepass $password -file server-certificate.pem << EOF
+yes
+EOF
+
+		echo "Adding Client to Server Trust Store"
+		keytool -importcert -trustcacerts -keystore  server-truststore.jks -storetype jks -storepass $password -alias client_$i -file client_$i-certificate.pem << EOF
+yes
+EOF
+
+		echo "Generating PKCS12 Keystore..."
+		openssl pkcs12 -export -out client_$i.pkcs12 -inkey client_$i-private-key.pem -in client_$i-certificate.pem -passout pass:$password 
+
+		echo "Generating JKS Keystore..."
+		keytool -importkeystore -srckeystore client_$i.pkcs12 -srcstoretype PKCS12 -destkeystore client_$i-keystore.jks -deststoretype JKS -storepass $password -keypass $password << EOF
+$password
+EOF
+
+		echo "Cleaning Up Client Certs..."
+		rm client_$i-private-key.pem
+		rm client_$i-certificate.pem
+		
+
+		mkdir $clientPath
+		mv client_$i-truststore.jks $clientPath
+		mv client_$i-keystore.jks $clientPath
+		mv client_$i.pkcs12 $clientPath
+		
+
+		i=$[$i+1]
+	done
+fi
+
+echo "Cleaning Up Server Cert..."
+rm server-private-key.pem
+rm server-certificate.pem
+rm server-keystore.pkcs12
+
+mkdir server
+mv server-keystore.jks server/
+mv server-truststore.jks server/
+
+echo "Certificates Created. All Passwords are: $password"
+
+echo "Copying server credentials to project..."
+cp -vf server/server-keystore.jks ../main/non-packaged-resources/keyStore/.
+cp -vf server/server-truststore.jks ../main/non-packaged-resources/trustStore/.
+
+exit 0

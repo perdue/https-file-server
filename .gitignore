@@ -8,3 +8,7 @@ target
 .idea/**
 *.log
 *.sw*
+src/main/non-packaged-resources/keyStore/**
+src/main/non-packaged-resources/trustStore/**
+src/scripts/clients/**
+src/scripts/server/**
