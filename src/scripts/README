@@ -19,3 +19,8 @@ server		Y	Server Hostname
 clientCount	Y	Number of Client/Server pairs to generate. Set to 0 to generate server certificates only
 client_X		Host name for Client X, where X is the Client Number. For example, if clientCount is set to 2, then you will have a client_1 & client_2 property
 
+Configure Client(s)
+------------------------
+1) Browser is the client: use clients/client_X/client_X.pkcs12
+2) Other clients: clients/client_X/client_X-keystore.jks contains the client cert, and
+                  clients/client_X/client_X-truststore.jks contains the trusted server cert.
